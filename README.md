@@ -77,6 +77,8 @@ GET http://localhost:8983/solr/select?q=*:*
 
 ## Responses (to solr.Select/solr.SelectRaw queries)
 
+### Responses
+
 A `Response` object and an error indicator is returned from calls to `solr.Select` and `solr.SelectRaw`. A `Response` has the following attributes:
 
 * `Results` - a pointer to a `DocumentCollection` (more on this later) which contains the documents returned by Solr
