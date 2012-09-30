@@ -106,3 +106,20 @@ A `DocumentCollection` wraps up a set of `Document`s providing a convenient inte
 * `Field(field_name string) interface{}` - returns the value of the field, specified by `field_name`
 
 An example program can be found in the solr-example package, [here](https://github.com/rtt/Go-Solr/blob/master/rsty/solr-example/example.go)
+
+### Example Response usage
+
+Shown below is an example tying together the usage of a `Response` and the `DocumentCollection` and `Document`s contained within.
+
+```go
+fmt.Println(fmt.Sprintf("Found %d hits in %dms", response.Results.NumFound, response.QTime))
+
+// iterate over Documents, printing the "id" field of each one
+l = response.Results.Len()
+fmt.Println(fmt.Sprintf("Printing %d documents (of %d)", l, response.Results.NumFound))
+
+for i := 0; i < l; i++ {
+    fmt.Println(response.Results.Get(i).Field("id")
+}
+
+```
