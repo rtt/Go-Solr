@@ -62,7 +62,7 @@ A pointer to `q` is passed to `s.Select`, and returned is a `Response` (`res`) a
 
 ```go
 q := "*:*" // a solr query
-res, err := s.RawQuery(q)
+res, err := s.SelectRaw(q)
 if err != nil {
     // handle error here
 }
