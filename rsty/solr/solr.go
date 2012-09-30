@@ -2,10 +2,9 @@ package solr
 
 import (
     "fmt"
-    "encoding/json"
-    "net/http"
-    "io/ioutil"
 )
+
+type URLParamMap map[string] []string
 
 /*
  * Represents a "connection"; actually just a host and port
@@ -14,10 +13,11 @@ import (
 type Connection struct {
     Host string
     Port int
+    Core string
 }
 
 /* 
- * Represents a Solr document
+ * Represents a Solr document, as returned by Select queries
  */
 type Document struct {
     Fields map[string] interface{}
@@ -27,14 +27,32 @@ type Document struct {
  * Represents a collection of solr documents
  * and various other metrics
  */
+
 type DocumentCollection struct {
     Collection []Document
     NumFound int
+    Start int
 }
 
-// type Query struct {
+type Response struct {
+    Results *DocumentCollection
+    Status int
+    QTime int
+    // TODO: Debug info as well?
+}
 
-// }
+/*
+ * Represents a Query with various params
+ */
+type Query struct {
+    Params map[string] interface{}
+    Rows int
+    Start int
+    Sort string
+    DefType string
+    Debug bool
+    OmitHeader bool
+}
 
 func (d *DocumentCollection) Get(i int) *Document {
     return &d.Collection[i]
@@ -55,91 +73,50 @@ func (document Document) Doc() map[string] interface{} {
 
 /*
  * Inits a new Connection
- * @returns *Connection
+ * @returns *Connection, error
  */
 func Init(host string, port int) (*Connection, error) {
-    if host == "" || port <= 0 || port > 65535 {
-        return nil, fmt.Errorf("Invalid host or port")
-    }
-
-    c := Connection{host, port}
-    return &c, nil
-}
-
-
-func HttpGet (url string) ([]byte, error) {
-
-    r, err := http.Get(url)
-    defer r.Body.Close()
-
-    if err != nil {
-        return nil, fmt.Errorf("GET failed (%s)", url)
-    }
-
-    // read the response
-    body, err := ioutil.ReadAll(r.Body)
-
-    if err != nil {
-        return nil, fmt.Errorf("Response read failed")
-    }
-
-    return body, nil
-}
-
-/*
- * Decodes a json []byte array into a populated DocumentCollection
- */
-func DecodeJsonToDocCollection (b []byte) (*DocumentCollection, error) {
-
-    var cont interface{}
-    err := json.Unmarshal(b, &cont)
-
-    if err != nil {
-        return nil, fmt.Errorf("Response decode error")
-    }
-
-    response := cont.(map[string] interface{})["response"]
-    // the total amount of results, irrespective of the amount returned in the response
-    num_found := int(response.(map[string] interface{})["numFound"].(float64))
-    // the amount we have here
-
-    docs := response.(map[string] interface{})["docs"].([]interface{})
-    num_results := len(docs)
-
-    coll := DocumentCollection{}
-    coll.NumFound = num_found
-
-    ds := make([]Document, num_results)
     
-    for i := 0; i < num_results; i++ {
-        ds[i] = Document{docs[i].(map[string] interface{})}
+    if len(host) == 0 {
+        return nil, fmt.Errorf("Invalid hostname (must be length >= 1)")
     }
 
-    coll.Collection = ds
+    if port <= 0 || port > 65535 {
+        return nil, fmt.Errorf("Invalid port (must be 1..65535")
+    }
 
-    return &coll, nil
+    return &Connection{Host: host, Port: port}, nil
 }
 
-/*
- * Performs a Query (select)
- */
-func (c *Connection) RawQuery (q string) (*DocumentCollection, error) {
 
-    body, err := HttpGet(fmt.Sprintf("http://%s:%d/solr/select?wt=json&q=%s", c.Host, c.Port, q))
+/*
+ * Performs a raw Select query using a given string
+ */
+func (c *Connection) SelectRaw (q string) (*Response, error) {
+
+    body, err := HTTPGet(SolrString(c, q))
 
     if err != nil {
         return nil, fmt.Errorf("Some sort of http failure") // TODO: investigate how net/http fails
     }
 
-    dc, err := DecodeJsonToDocCollection(body)
+    r, err := ResponseFromHTTPResponse(body)
     
+
     if err != nil {
         return nil, err
     }
 
-    return dc, nil
+    return r, nil
 }
 
-// func (c *Connection) Query(a ...interface{}) *DocumentCollection {
+/*
+ * Performs a Select query against the given query
+ */
+func (c *Connection) Select(q Query) (*Response, error) {
+    return nil, nil
+}
+
+// func (c *Connection) Update(q Query) (*Response, error) {
 
 // }

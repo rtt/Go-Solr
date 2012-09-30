@@ -16,23 +16,32 @@ func main() {
     }
 
     // define a solr query string
-    q := "*:*"
+    q := "q=*:*"
     
     // perform a query    
-    res, err := s.RawQuery(q)
+    res, err := s.SelectRaw(q)
 
     if err != nil {
-        fmt.Println(err)
+        fmt.Println("hi", err)
         return
     }
 
-    // print a summary and loop over results, priting the "title" and "latlng" fields
-    fmt.Println(fmt.Sprintf("Query: %s\nHits: %d\nNum Results: %d\n\nResults\n-------\n", q, res.NumFound, res.Len())) 
+    results := res.Results
 
-    for i := 0; i < res.Len(); i++ {
-        fmt.Println("Title:", res.Get(i).Field("title"))
-        fmt.Println("Latlng:", res.Get(i).Field("latlng"))
+    // print a summary and loop over results, priting the "title" and "latlng" fields
+    fmt.Println(
+        fmt.Sprintf("Query: %s\nHits: %d\nNum Results: %d\nQtime: %d\nStatus: %d\n\nResults\n-------\n",
+        q,
+        results.NumFound,
+        results.Len(),
+        res.QTime,
+        res.Status))
+
+    for i := 0; i < results.Len(); i++ {
+        fmt.Println("Some field:", results.Get(i).Field("id"))
+        fmt.Println("Some other field:", results.Get(i).Field("title"))
 
         fmt.Println("")
     }
+
 }
