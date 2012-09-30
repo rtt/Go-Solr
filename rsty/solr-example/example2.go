@@ -23,11 +23,20 @@ func main() {
         return
     }
 
-    // define a solr query string
-    q := "q=*:*"
-    
-    // perform a query    
-    res, err := s.SelectRaw(q)
+    // Build a query object
+    // Here we are specifying a 'q' param,
+    // rows, faceting and facet.fields
+    q := solr.Query{
+        Params: solr.URLParamMap{
+            "q": []string{"id:13"},
+            "facet.field": []string{"accepts_4x4s", "accepts_bicycles"},
+            "facet": []string{"true"},
+        },
+        Rows: 10,
+    }
+
+    // perform the query, checking for errors
+    res, err := s.Select(&q)
 
     if err != nil {
         fmt.Println(err)
