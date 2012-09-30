@@ -2,9 +2,12 @@ package solr
 
 import (
     "fmt"
+    "strings"
 )
 
+
 type URLParamMap map[string] []string
+
 
 /*
  * Represents a "connection"; actually just a host and port
@@ -16,6 +19,7 @@ type Connection struct {
     Core string
 }
 
+
 /* 
  * Represents a Solr document, as returned by Select queries
  */
@@ -23,16 +27,17 @@ type Document struct {
     Fields map[string] interface{}
 }
 
+
 /*
  * Represents a collection of solr documents
  * and various other metrics
  */
-
 type DocumentCollection struct {
     Collection []Document
     NumFound int
     Start int
 }
+
 
 type Response struct {
     Results *DocumentCollection
@@ -41,11 +46,13 @@ type Response struct {
     // TODO: Debug info as well?
 }
 
+
 /*
  * Represents a Query with various params
  */
 type Query struct {
-    Params map[string] interface{}
+    Params URLParamMap
+    Payload string
     Rows int
     Start int
     Sort string
@@ -54,6 +61,50 @@ type Query struct {
     OmitHeader bool
 }
 
+
+/*
+ * Query.String() returns the Query in solr query string format
+ */
+func (q *Query) String() string {
+    // TODO: this is kinda ugly
+    s := []string{}
+
+    if len(q.Params) > 0 {
+        s = append(s, EncodeURLParamMap(&q.Params))
+    }
+
+    if q.Rows != 0 {
+        s = append(s, fmt.Sprintf("rows=%d", q.Rows))
+    }
+
+    if q.Start != 0 {
+        s = append(s, fmt.Sprintf("start=%d", q.Start))
+    }
+
+    if q.Sort != "" {
+        s = append(s, fmt.Sprintf("sort=%s", q.Sort))
+    }
+
+    if q.DefType != "" {
+        s = append(s, fmt.Sprintf("deftype=%s", q.DefType))
+    }
+
+    if q.Debug {
+        s = append(s, fmt.Sprintf("debugQuery=true"))
+    }
+
+    if q.OmitHeader {
+        s = append(s, fmt.Sprintf("omitHeader=true"))
+    }
+
+    return strings.Join(s, "&")
+}
+
+
+/*
+ * DocumentCollection.Get() returns the document in the collection
+ * at position i
+ */
 func (d *DocumentCollection) Get(i int) *Document {
     return &d.Collection[i]
 }
@@ -70,6 +121,7 @@ func (document Document) Field(field string) interface{} {
 func (document Document) Doc() map[string] interface{} {
     return document.Fields
 }
+
 
 /*
  * Inits a new Connection
@@ -89,19 +141,14 @@ func Init(host string, port int) (*Connection, error) {
 }
 
 
-/*
- * Performs a raw Select query using a given string
- */
-func (c *Connection) SelectRaw (q string) (*Response, error) {
-
-    body, err := HTTPGet(SolrString(c, q))
+func (c *Connection) Select (q *Query) (*Response, error) {
+    body, err := HTTPGet(SolrString(c, q.String()))
 
     if err != nil {
         return nil, fmt.Errorf("Some sort of http failure") // TODO: investigate how net/http fails
     }
 
     r, err := ResponseFromHTTPResponse(body)
-    
 
     if err != nil {
         return nil, err
@@ -111,11 +158,24 @@ func (c *Connection) SelectRaw (q string) (*Response, error) {
 }
 
 /*
- * Performs a Select query against the given query
+ * Performs a Select query given a raw query string or Query type
  */
-func (c *Connection) Select(q Query) (*Response, error) {
-    return nil, nil
+func (c *Connection) SelectRaw (q string) (*Response, error) {
+    body, err := HTTPGet(SolrString(c, q))
+
+    if err != nil {
+        return nil, fmt.Errorf("Some sort of http failure") // TODO: investigate how net/http fails
+    }
+
+    r, err := ResponseFromHTTPResponse(body)
+
+    if err != nil {
+        return nil, err
+    }
+
+    return r, nil
 }
+
 
 // func (c *Connection) Update(q Query) (*Response, error) {
 

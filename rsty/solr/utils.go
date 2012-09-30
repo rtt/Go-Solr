@@ -8,6 +8,7 @@ import (
     "strings"
 )
 
+
 /*
  * Performs a GET request to the given url
  * Returns a []byte containing the response body
@@ -31,6 +32,11 @@ func HTTPGet (url string) ([]byte, error) {
     return body, nil
 }
 
+// func HTTPPost (url string, headers []string) (bool, error) {
+//     return true, nil
+// }
+
+
 /*
  * Returns a URLEncoded version of a Param Map
  * E.g., ParamMap[foo:bar omg:wtf] => "foo=bar&omg=wtf"
@@ -48,12 +54,14 @@ func EncodeURLParamMap(m *URLParamMap) string {
   return strings.Join(r, "&")
 }
 
+
 /*
  * Generates a Solr query string from a connection and a query string
  */
 func SolrString (c *Connection, q string) string {
     return fmt.Sprintf(fmt.Sprintf("http://%s:%d/solr/select?wt=json&%s", c.Host, c.Port, q))
 }
+
 
 /*
  * Decodes a json formatted []byte into an interface{} type
@@ -69,6 +77,7 @@ func BytesToJSON (b *[]byte) (*interface{}, error) {
 
     return &container, nil
 }
+
 
 /*
  * Takes a JSON formatted Solr response (interface{}, not []byte)
@@ -104,22 +113,26 @@ func BuildResponse (j *interface{}) (*Response, error) {
         coll := DocumentCollection{}
         coll.NumFound = num_found
 
-        ds := make([]Document, num_results)
+        ds := []Document{}
 
         for i := 0; i < num_results; i++ {
-            ds[i] = Document{docs[i].(map[string] interface{})}
+            ds = append(ds, Document{docs[i].(map[string] interface{})})
         }
 
         coll.Collection = ds
-
         r.Results = &coll
     }
+
+    // TODO: Facets if present
 
     return &r, nil
 }
 
+
+/*
+ * Decodes a HTTP (Solr) response and returns a Response
+ */
 func ResponseFromHTTPResponse (b []byte) (*Response, error) {
-    // decode
     j, err := BytesToJSON(&b)
 
     if err != nil {
@@ -134,4 +147,3 @@ func ResponseFromHTTPResponse (b []byte) (*Response, error) {
 
     return resp, nil
 }
-
