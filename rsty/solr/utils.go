@@ -86,8 +86,9 @@ func BytesToJSON (b *[]byte) (*interface{}, error) {
 func BuildResponse (j *interface{}) (*Response, error) {
 
     // look for a response element, bail if not present
-    solr_response := (*j).(map[string] interface{})["response"]
-    if solr_response == nil {
+    response_root := (*j).(map[string] interface{})
+    response := response_root["response"]
+    if response == nil {
         return nil, fmt.Errorf("Supplied interface appears invalid (missing response)")
     }
 
@@ -102,10 +103,10 @@ func BuildResponse (j *interface{}) (*Response, error) {
     }
 
     // now do docs, if they exist in the response
-    docs := solr_response.(map[string] interface{})["docs"].([]interface{})
+    docs := response.(map[string] interface{})["docs"].([]interface{})
     if docs != nil {
         // the total amount of results, irrespective of the amount returned in the response
-        num_found := int(solr_response.(map[string] interface{})["numFound"].(float64))
+        num_found := int(response.(map[string] interface{})["numFound"].(float64))
 
         // and the amount actually returned
         num_results := len(docs)
@@ -123,7 +124,32 @@ func BuildResponse (j *interface{}) (*Response, error) {
         r.Results = &coll
     }
 
-    // TODO: Facets if present
+    // facets
+    facet_counts := response_root["facet_counts"].(map[string] interface{})
+    if facet_counts != nil {
+        // do counts if they exist
+        facet_fields := facet_counts["facet_fields"].(map[string] interface{})
+        facets := []Facet{}
+        if facet_fields != nil {
+            // iterate over each facet field, create facet & counts for each field
+            for k, v := range facet_fields {
+                f := Facet{Name: k}
+                chunked := chunk(v.([]interface{}), facet_chunk_size)
+                lc := len(chunked)
+                for i := 0; i < lc; i++ {
+                    f.Counts = append(f.Counts, FacetCount{
+                        Key: chunked[i][0].(string),
+                        Count: int(chunked[i][1].(float64)),
+                    })
+                }
+                facets = append(facets, f)
+            }
+        }
+
+        // add Facets to collection
+        r.Results.Facets = facets
+        r.Results.NumFacets = len(facets)
+    }
 
     return &r, nil
 }
@@ -146,4 +172,17 @@ func ResponseFromHTTPResponse (b []byte) (*Response, error) {
     }
 
     return resp, nil
+}
+
+/*
+ * Similar to python's itertools.izip_longest;
+ * takes an array and chunks it according to a given size
+ */
+func chunk(s []interface{}, sz int) [][]interface{} {
+  r := [][]interface{}{}
+  j := len(s)
+  for i := 0; i < j; i+=sz {
+    r = append(r, s[i:i+sz])
+  }
+  return r
 }

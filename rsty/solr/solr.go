@@ -6,9 +6,6 @@ import (
 )
 
 
-type URLParamMap map[string] []string
-
-
 /*
  * Represents a "connection"; actually just a host and port
  * (and probably at some point a Solr Core name)
@@ -27,18 +24,40 @@ type Document struct {
     Fields map[string] interface{}
 }
 
+/*
+ * Represents a FacetCount for a Facet
+ */
+type FacetCount struct {
+    Key string
+    Count int
+}
+
+var facet_chunk_size int = 2
+/*
+ * Represents a Facet with a name and count
+ */
+type Facet struct {
+    Name string         // accepts_4x4s
+    Counts []FacetCount // a set of values
+}
+
 
 /*
  * Represents a collection of solr documents
  * and various other metrics
  */
 type DocumentCollection struct {
+    Facets []Facet
     Collection []Document
+    NumFacets int // convenience...
     NumFound int
     Start int
 }
 
 
+/*
+ * Represents a Solr response
+ */
 type Response struct {
     Results *DocumentCollection
     Status int
@@ -46,13 +65,13 @@ type Response struct {
     // TODO: Debug info as well?
 }
 
+type URLParamMap map[string] []string
 
 /*
- * Represents a Query with various params
+ * Query represents a query with various params
  */
 type Query struct {
     Params URLParamMap
-    Payload string
     Rows int
     Start int
     Sort string
@@ -109,19 +128,28 @@ func (d *DocumentCollection) Get(i int) *Document {
     return &d.Collection[i]
 }
 
+/*
+ * DocumentCollection.Len() returns the amount of documents
+ * in the collection
+ */
 func (d *DocumentCollection) Len() int {
     return len(d.Collection)
 }
 
+/*
+ * Document.Field() returns the value of the given field name in the document
+ */
 func (document Document) Field(field string) interface{} {
     r, _ := document.Fields[field]
     return r
 }
 
+/*
+ * Document.Doc() returns the raw document (map)
+ */
 func (document Document) Doc() map[string] interface{} {
     return document.Fields
 }
-
 
 /*
  * Inits a new Connection
@@ -141,6 +169,9 @@ func Init(host string, port int) (*Connection, error) {
 }
 
 
+/*
+ * Performs a Select query given a Query
+ */
 func (c *Connection) Select (q *Query) (*Response, error) {
     body, err := HTTPGet(SolrString(c, q.String()))
 
@@ -158,7 +189,7 @@ func (c *Connection) Select (q *Query) (*Response, error) {
 }
 
 /*
- * Performs a Select query given a raw query string or Query type
+ * Performs a raw Select query given a raw query string
  */
 func (c *Connection) SelectRaw (q string) (*Response, error) {
     body, err := HTTPGet(SolrString(c, q))
