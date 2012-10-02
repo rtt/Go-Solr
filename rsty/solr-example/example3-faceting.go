@@ -70,13 +70,12 @@ func main() {
     fmt.Println("------")
 
     // loop over facets returned
-    
     for i := 0; i < results.NumFacets; i++ {
         facet := results.Facets[i]
         fmt.Println("Facet:", facet.Name)
         lfc := len(facet.Counts)
         for j := 0; j < lfc; j++ {
-            fmt.Println(facet.Counts[j].Count, "=>", facet.Counts[j].Key)
+            fmt.Println(facet.Counts[j].Value, "=>", facet.Counts[j].Count)
         }
         fmt.Println("")
     }
