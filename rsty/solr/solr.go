@@ -14,6 +14,7 @@ type Connection struct {
     Host string
     Port int
     Core string
+    Version []int
 }
 
 
@@ -24,15 +25,20 @@ type Document struct {
     Fields map[string] interface{}
 }
 
+
 /*
  * Represents a FacetCount for a Facet
  */
 type FacetCount struct {
-    Key string
+    Value string
     Count int
 }
 
+
+/* chunked size of facet solr return format */
 var facet_chunk_size int = 2
+
+
 /*
  * Represents a Facet with a name and count
  */
@@ -58,14 +64,31 @@ type DocumentCollection struct {
 /*
  * Represents a Solr response
  */
-type Response struct {
+type SelectResponse struct {
     Results *DocumentCollection
     Status int
     QTime int
     // TODO: Debug info as well?
 }
 
+
+/*
+ * Represents an error from Solr
+ */
+type ErrorResponse struct {
+    Message string
+    Status int
+}
+
+type UpdateResponse struct {
+    Success bool
+}
+
+/*
+ * Holds URL parameters
+ */
 type URLParamMap map[string] []string
+
 
 /*
  * Query represents a query with various params
@@ -151,9 +174,27 @@ func (document Document) Doc() map[string] interface{} {
     return document.Fields
 }
 
+
+func (r SelectResponse) String() string {
+    return fmt.Sprintf("SelectResponse: %d Results, Status: %d, QTime: %d", r.Results.Len(), r.Status, r.QTime)
+}
+
+
+func (r ErrorResponse) String() string {
+    return fmt.Sprintf("Solr Error: [code: %d, msg: \"%s\"]", r.Status, r.Message)
+}
+
+
+func (r UpdateResponse) String() string {
+    if r.Success {
+        return fmt.Sprintf("UpdateResponse: OK")
+    }
+    return fmt.Sprintf("UpdateResponse: FAIL")
+}
+
+
 /*
- * Inits a new Connection
- * @returns *Connection, error
+ * Inits a new Connection to a Solr instance
  */
 func Init(host string, port int) (*Connection, error) {
     
@@ -172,14 +213,14 @@ func Init(host string, port int) (*Connection, error) {
 /*
  * Performs a Select query given a Query
  */
-func (c *Connection) Select (q *Query) (*Response, error) {
-    body, err := HTTPGet(SolrString(c, q.String()))
+func (c *Connection) Select (q *Query) (*SelectResponse, error) {
+    body, err := HTTPGet(SolrSelectString(c, q.String()))
 
     if err != nil {
         return nil, fmt.Errorf("Some sort of http failure") // TODO: investigate how net/http fails
     }
 
-    r, err := ResponseFromHTTPResponse(body)
+    r, err := SelectResponseFromHTTPResponse(body)
 
     if err != nil {
         return nil, err
@@ -187,18 +228,19 @@ func (c *Connection) Select (q *Query) (*Response, error) {
 
     return r, nil
 }
+
 
 /*
  * Performs a raw Select query given a raw query string
  */
-func (c *Connection) SelectRaw (q string) (*Response, error) {
-    body, err := HTTPGet(SolrString(c, q))
+func (c *Connection) SelectRaw (q string) (*SelectResponse, error) {
+    body, err := HTTPGet(SolrSelectString(c, q))
 
     if err != nil {
         return nil, fmt.Errorf("Some sort of http failure") // TODO: investigate how net/http fails
     }
 
-    r, err := ResponseFromHTTPResponse(body)
+    r, err := SelectResponseFromHTTPResponse(body)
 
     if err != nil {
         return nil, err
@@ -208,6 +250,42 @@ func (c *Connection) SelectRaw (q string) (*Response, error) {
 }
 
 
-// func (c *Connection) Update(q Query) (*Response, error) {
+/*
+ * Performs a Solr Update query against a given update document
+ * specified in a map[string]interface{} type
+ * NOTE: Requires JSON updates to be enabled, see;
+ * http://wiki.apache.org/solr/UpdateJSON
+ * FUTURE: Will ask for solr version details in Connection and
+ * act appropriately
+ */
+func (c *Connection) Update (m map[string] interface{}, commit bool) (*UpdateResponse, error) {
 
-// }
+    // encode "json" to a byte array & check
+    payload, err := JSONToBytes(m);
+    if err != nil {
+        return nil, err
+    }
+    
+    // perform request
+    resp, err := HTTPPost(
+        SolrUpdateString(c, commit),
+        [][]string{{"Content-Type", "application/json"}},
+        *payload)
+
+    if err != nil {
+        return nil, err
+    }
+
+    // decode the response & check
+    decoded, err := BytesToJSON(&resp)
+    if err != nil {
+        return nil, err
+    }
+
+    error, report := SolrErrorResponse((*decoded).(map[string] interface{}))
+    if error {
+        return nil, fmt.Errorf(fmt.Sprintf("%s", *report))
+    }
+
+    return &UpdateResponse{true}, nil
+}

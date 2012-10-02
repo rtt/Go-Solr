@@ -1,6 +1,7 @@
 package solr
 
 import (
+    "bytes"
     "fmt"
     "encoding/json"
     "io/ioutil"
@@ -32,9 +33,34 @@ func HTTPGet (url string) ([]byte, error) {
     return body, nil
 }
 
-// func HTTPPost (url string, headers []string) (bool, error) {
-//     return true, nil
-// }
+func HTTPPost (url string, headers [][]string, payload []byte) ([]byte, error) {
+    // setup post client
+    client := &http.Client{}
+    req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
+
+    // add headers
+    if len(headers) > 0 {
+        for i := range headers {
+            req.Header.Add(headers[i][0], headers[i][1])
+        }
+    }
+
+    // perform request
+    resp, err := client.Do(req)
+    defer resp.Body.Close()
+
+    if err != nil {
+        return nil, fmt.Errorf(fmt.Sprintf("POST request failed: %s", err))
+    }
+
+    // read response & return
+    body, err := ioutil.ReadAll(resp.Body)
+    if err != nil {
+        return nil, err
+    }
+
+    return body, nil
+}
 
 
 /*
@@ -58,8 +84,19 @@ func EncodeURLParamMap(m *URLParamMap) string {
 /*
  * Generates a Solr query string from a connection and a query string
  */
-func SolrString (c *Connection, q string) string {
-    return fmt.Sprintf(fmt.Sprintf("http://%s:%d/solr/select?wt=json&%s", c.Host, c.Port, q))
+func SolrSelectString (c *Connection, q string) string {
+    return fmt.Sprintf("http://%s:%d/solr/select?wt=json&%s", c.Host, c.Port, q)
+}
+
+/*
+ * Generates a Solr update query string
+ */
+func SolrUpdateString (c *Connection, commit bool) string {
+    s := fmt.Sprintf("http://%s:%d/solr/update", c.Host, c.Port)
+    if commit {
+        return fmt.Sprintf("%s?commit=true", s)
+    }
+    return s
 }
 
 
@@ -80,10 +117,23 @@ func BytesToJSON (b *[]byte) (*interface{}, error) {
 
 
 /*
+ * Encodes a map[string]interface{} to bytes and returns
+ * a pointer to said bytes
+ */
+func JSONToBytes (m map[string] interface{}) (*[]byte, error) {
+    b, err := json.Marshal(m)
+    if err != nil {
+        return nil, fmt.Errorf("Failed to encode JSON")
+    }
+    return &b, nil
+}
+
+
+/*
  * Takes a JSON formatted Solr response (interface{}, not []byte)
  * And returns a *Response
  */
-func BuildResponse (j *interface{}) (*Response, error) {
+func BuildResponse (j *interface{}) (*SelectResponse, error) {
 
     // look for a response element, bail if not present
     response_root := (*j).(map[string] interface{})
@@ -93,7 +143,7 @@ func BuildResponse (j *interface{}) (*Response, error) {
     }
 
     // begin Response creation
-    r := Response{}
+    r := SelectResponse{}
 
     // do status & qtime, if possible
     r_header := (*j).(map[string] interface{})["responseHeader"].(map[string] interface{})
@@ -138,7 +188,7 @@ func BuildResponse (j *interface{}) (*Response, error) {
                 lc := len(chunked)
                 for i := 0; i < lc; i++ {
                     f.Counts = append(f.Counts, FacetCount{
-                        Key: chunked[i][0].(string),
+                        Value: chunked[i][0].(string),
                         Count: int(chunked[i][1].(float64)),
                     })
                 }
@@ -158,7 +208,7 @@ func BuildResponse (j *interface{}) (*Response, error) {
 /*
  * Decodes a HTTP (Solr) response and returns a Response
  */
-func ResponseFromHTTPResponse (b []byte) (*Response, error) {
+func SelectResponseFromHTTPResponse (b []byte) (*SelectResponse, error) {
     j, err := BytesToJSON(&b)
 
     if err != nil {
@@ -172,6 +222,22 @@ func ResponseFromHTTPResponse (b []byte) (*Response, error) {
     }
 
     return resp, nil
+}
+
+/*
+ * Determines whether a decoded response from Solr
+ * is an error response or not
+ */
+func SolrErrorResponse(m map[string] interface{}) (bool, *ErrorResponse) {
+    // check for existance of "error" key
+    if _, found := m["error"]; found {
+        error := m["error"].(map[string] interface{})
+        return true, &ErrorResponse{
+            Message: error["msg"].(string),
+            Status: int(error["code"].(float64)),
+        }
+    }
+    return false, nil
 }
 
 /*
