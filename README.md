@@ -1,25 +1,26 @@
 # Go-Solr
 
-An [Apache Solr](http://lucene.apache.org/solr/) library written in Go, which is [my](http://rsty.org) first Go project! Functionality includes:
+An [Apache Solr](http://lucene.apache.org/solr/) library written in [Go](http://golang.org/), which is [my](http://rsty.org) first Go project! Functionality includes:
 
 * Select queries
-* Raw queries - useful for more complex queries such as [Function Queries](http://wiki.apache.org/solr/FunctionQuery)
+* Raw Select tqueries - useful for more complex queries such as [Function Queries](http://wiki.apache.org/solr/FunctionQuery)
 * [Update queries](http://wiki.apache.org/solr/UpdateJSON) (add/replace/delete)
 * [Faceting](http://wiki.apache.org/solr/SolrFacetingOverview)
 
 For more information on Solr itself, please refer to [Solr's wiki](http://wiki.apache.org/solr/).
 
-This library is released under the "free as in beer" license. Use it, mess with it, do whatever you like with it... Comments, suggestions, pull requests etc are welcomed.
+This library is released under the "do whatever you like" license.
 
 ## Examples / Documentation
 
-Example programs can be found in the `rsty/solr-example` package, [here](https://github.com/rtt/Go-Solr/blob/master/rsty/solr-example/example.go).
+Example programs can be found in the `examples` folder [here](https://github.com/rtt/Go-Solr/tree/master/examples).
 
-### Creating a connection (solr.Init)
+### Creating a connection - solr.Init()
 
-Import the `rsty/solr` package (it is assumed you know how to build and install it) and create a "connection" to your solr server.
+Import the `solr` package (it is assumed you know how to build/install it, if not, [see here](http://golang.org/doc/install#install)) and create a "connection" to your solr server by calling the `solr.Init(hostname, port int)` function supplying a hostname and port.
 
 ```go
+// connect to server running on localhost port 8983
 s := solr.Init("localhost", 8983)
 ```
 
@@ -47,9 +48,9 @@ Here we have defined a set of URL parameters - `q`, `facet.field`, `facet`, `row
 GET http://localhost:8983/solr/select?q=id:31&facet.field=some_field&facet.field=some_other_field&facet=true
 ```
 
-Notice that `facet_field` is an array of strings and appears multiple times in the resulting query string (above)
+Notice that `facet_field`, like `q`, is an array of strings and appears multiple times in the resulting query string (shown above)
 
-Performing a query using our `solr.Query` is simple and shown below
+Performing a query using our `solr.Query()` is simple and shown below
 
 ```go
 res, err := s.Select(&q)
@@ -70,7 +71,7 @@ Iterating over the results is shown later in this document.
 
 ```go
 q := "q={!func}add($v1,$v2)&v1=sqrt(popularity)&v2=100.0" // a solr query
-res, err := s.RawQuery(q)
+res, err := s.SelectRaw(q)
 if err != nil {
     // handle error here
 }
@@ -82,18 +83,21 @@ In other words, under the hood the following query will have been performed:
 ```
 GET http://localhost:8983/solr/select?q={!func}add($v1,$v2)&v1=sqrt(popularity)&v2=100.0
 ```
+As with `solr.Select()`, `solr.SelectRaw()` returns a pointer to a `SelectResponse` and an error, `err`.
 
-## Responses (to solr.Select/solr.SelectRaw queries)
+## Responses - SelectResponse type
 
-Responses to select queries (`solr.Select()` and `solr.RawSelect()`) come in the form of pointers to `SelectResponse` types. A response wraps up a solr response. The following few paragraphs and sections describe the various parts of a `SelectResponse` object
+Responses to select queries (`solr.Select()` and `solr.RawSelect()`) come in the form of pointers to `SelectResponse` types. A `SelectResponse` wraps a Solr response with a convenient interface. The following few paragraphs and sections describe the various parts of a `SelectResponse` object
 
-### SelectResponse object
+### SelectResponse type
 
-A `SelectResponse` object and an error indicator is returned from calls to `solr.Select()` and `solr.SelectRaw()`. A `SelectResponse` mimics a Solr response and therefore has the following attributes:
+A pointer to a `SelectResponse` and an error are returned from calls to `solr.Select()` and `solr.SelectRaw()`. A `SelectResponse` mimics a Solr response and therefore has the following attributes:
 
 * `Results` - a pointer to a `DocumentCollection` (more on this later) which contains the documents returned by Solr
-* `Status` - `status` indicator as returned by Solr
+* `Status` - query `status` indicator as returned by Solr
 * `QTime` - `QTime` value as returned by Solr
+
+More information on `Status` and `QTime` can be found [here](http://wiki.apache.org/solr/SolrTerminology).
 
 ### DocumentCollection object
 
@@ -104,7 +108,7 @@ A `DocumentCollection` wraps up a set of `Document`s providing a convenient inte
 * `Len() int` - returns the length (int) of the `Document`s returned
 * `Get(i int) *Document` - returns a pointer to the document at position `i` within the Collection
 
-`DocumentCollection` has the following properties
+`DocumentCollection` has the following properties:
 
 * `NumFound` - the total number of results solr matched to your query (irrespective of the amount returned)
 * `Facets` - an array of `Facet` objects
@@ -171,4 +175,38 @@ compact => 2
 
 ## Update Queries - solr.Update()
 
-[TODO]
+Update queries are used to add, replace or delete documents in Solr's index. Please see the [Solr Wiki](http://wiki.apache.org/solr/UpdateJSON) for more information.  Go-Solr uses JSON for update queries, *not* XML. Solr3.1 will need to be [configured](http://wiki.apache.org/solr/UpdateJSON#Requirements) to support JSON for update messages, Solr 4.0+ supports JSON natively via `/update`.
+
+### Creating an Update query - example
+
+`solr.Update(document map[string]interface{}, commit bool)` takes two arguments, an "update document" and a commit flag (boolean) which specifies whether or not a commit should be performed at the same time as the update is performed. An example may look like the following
+
+```go
+q, err := solr.Update(document, true);
+if err != nil {
+    // ...
+}
+```
+
+An update document must be of type `map[string]interface{}`, and may look like the following:
+
+```go
+doc := map[string]interface {}{
+    "add":[]interface {}{
+        map[string]interface {}{"id": 22, "title": "abc"},
+        map[string]interface {}{"id": 23, "title": "def"},
+        map[string]interface {}{"id": 24, "title": "def"},
+    },
+}
+```
+... which is equivalent to the following JSON:
+
+```json
+{"add": [{"id": 22, "title": "abc"}, {"id": 23, "title": "def"}, {"id": 24, "title": "def"}]}
+```
+
+... which is an Update which adds (or replaces) 3 documents in a fictional Solr index.
+
+You can define any type of document to send off to Solr in an update. Support will be added later to allow raw JSON strings to be used in Updates.
+
+`solr.Update()` returns an `UpdateResponse` and an `error`. `UpdateResponse` has a `Success` (bool) property.
