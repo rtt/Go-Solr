@@ -217,10 +217,10 @@ func HTTPGet(url string) ([]byte, error) {
  * * A payload (post request body) which can be nil
  * * Returns the body of the response and an error if necessary
  */
-func HTTPPost(url string, headers [][]string, payload []byte) ([]byte, error) {
+func HTTPPost(url string, headers [][]string, payload *[]byte) ([]byte, error) {
 	// setup post client
 	client := &http.Client{}
-	req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
+	req, err := http.NewRequest("POST", url, bytes.NewReader(*payload))
 
 	// add headers
 	if len(headers) > 0 {
@@ -231,6 +231,10 @@ func HTTPPost(url string, headers [][]string, payload []byte) ([]byte, error) {
 
 	// perform request
 	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
 	defer resp.Body.Close()
 
 	if err != nil {
@@ -510,7 +514,7 @@ func (c *Connection) Update(m map[string]interface{}, commit bool) (*UpdateRespo
 	resp, err := HTTPPost(
 		SolrUpdateString(c, commit),
 		[][]string{{"Content-Type", "application/json"}},
-		*payload)
+		payload)
 
 	if err != nil {
 		return nil, err
