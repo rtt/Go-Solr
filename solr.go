@@ -510,7 +510,7 @@ func (c *Connection) Update(m map[string]interface{}, commit bool) (*UpdateRespo
 	resp, err := HTTPPost(
 		SolrUpdateString(c, commit),
 		[][]string{{"Content-Type", "application/json"}},
-		payload)
+		*payload)
 
 	if err != nil {
 		return nil, err
