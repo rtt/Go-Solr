@@ -1,8 +1,9 @@
 package main
 
-import "fmt"
-
-import "rsty/solr"
+import (
+	"fmt"
+	"github.com/rtt/Go-Solr"
+)
 
 /*
  * README
@@ -12,45 +13,44 @@ import "rsty/solr"
  * printed to the console
  */
 
-
 func main() {
 
-    // init a connection
-    s, err := solr.Init("localhost", 8983)
+	// init a connection
+	s, err := solr.Init("localhost", 8983)
 
-    if err != nil {
-        fmt.Println(err)
-        return
-    }
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-    // define a solr query string
-    q := "q=*:*"
-    
-    // perform a query    
-    res, err := s.SelectRaw(q)
+	// define a solr query string
+	q := "q=*:*"
 
-    if err != nil {
-        fmt.Println(err)
-        return
-    }
+	// perform a query    
+	res, err := s.SelectRaw(q)
 
-    // grab results for ease of use later on
-    results := res.Results
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-    // print a summary and loop over results, priting the "title" and "latlng" fields
-    fmt.Println(
-        fmt.Sprintf("Query: %#v\nHits: %d\nNum Results: %d\nQtime: %d\nStatus: %d\n\nResults\n-------\n",
-        q,
-        results.NumFound,
-        results.Len(),
-        res.QTime,
-        res.Status))
+	// grab results for ease of use later on
+	results := res.Results
 
-    for i := 0; i < results.Len(); i++ {
-        fmt.Println("Some field:", results.Get(i).Field("id"))
-        fmt.Println("Some other field:", results.Get(i).Field("title"))
+	// print a summary and loop over results, priting the "title" and "latlng" fields
+	fmt.Println(
+		fmt.Sprintf("Query: %#v\nHits: %d\nNum Results: %d\nQtime: %d\nStatus: %d\n\nResults\n-------\n",
+			q,
+			results.NumFound,
+			results.Len(),
+			res.QTime,
+			res.Status))
 
-        fmt.Println("")
-    }
+	for i := 0; i < results.Len(); i++ {
+		fmt.Println("Some field:", results.Get(i).Field("id"))
+		fmt.Println("Some other field:", results.Get(i).Field("title"))
+
+		fmt.Println("")
+	}
 
 }
