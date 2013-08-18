@@ -26,7 +26,7 @@ type Connection struct {
 	Version []int
 }
 
-/* 
+/*
  * Represents a Solr document, as returned by Select queries
  */
 type Document struct {
@@ -195,6 +195,11 @@ func (r UpdateResponse) String() string {
 func HTTPGet(url string) ([]byte, error) {
 
 	r, err := http.Get(url)
+
+	if err != nil {
+		return nil, err
+	}
+
 	defer r.Body.Close()
 
 	if err != nil {
@@ -360,30 +365,34 @@ func BuildResponse(j *interface{}) (*SelectResponse, error) {
 	}
 
 	// facets
-	facet_counts := response_root["facet_counts"].(map[string]interface{})
-	if facet_counts != nil {
-		// do counts if they exist
-		facet_fields := facet_counts["facet_fields"].(map[string]interface{})
-		facets := []Facet{}
-		if facet_fields != nil {
-			// iterate over each facet field, create facet & counts for each field
-			for k, v := range facet_fields {
-				f := Facet{Name: k}
-				chunked := chunk(v.([]interface{}), facet_chunk_size)
-				lc := len(chunked)
-				for i := 0; i < lc; i++ {
-					f.Counts = append(f.Counts, FacetCount{
-						Value: chunked[i][0].(string),
-						Count: int(chunked[i][1].(float64)),
-					})
+	facet_response, ok := response_root["facet_counts"].(interface{})
+	if ok == true {
+		facet_counts := facet_response.(map[string]interface{})
+		if facet_counts != nil {
+			// do counts if they exist
+			facet_fields := facet_counts["facet_fields"].(map[string]interface{})
+			facets := []Facet{}
+			if facet_fields != nil {
+				// iterate over each facet field, create facet & counts for each field
+				for k, v := range facet_fields {
+					f := Facet{Name: k}
+					chunked := chunk(v.([]interface{}), facet_chunk_size)
+					lc := len(chunked)
+					for i := 0; i < lc; i++ {
+						f.Counts = append(f.Counts, FacetCount{
+							Value: chunked[i][0].(string),
+							Count: int(chunked[i][1].(float64)),
+						})
+					}
+					facets = append(facets, f)
 				}
-				facets = append(facets, f)
 			}
-		}
 
-		// add Facets to collection
-		r.Results.Facets = facets
-		r.Results.NumFacets = len(facets)
+			// add Facets to collection
+			r.Results.Facets = facets
+			r.Results.NumFacets = len(facets)
+
+		}
 	}
 
 	return &r, nil
