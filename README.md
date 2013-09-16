@@ -21,7 +21,7 @@ Import the `solr` package (it is assumed you know how to build/install it, if no
 
 ```go
 // connect to server running on localhost port 8983
-s := solr.Init("localhost", 8983)
+s, err := solr.Init("localhost", 8983)
 ```
 
 ### Performing Select Queries - solr.Select()
