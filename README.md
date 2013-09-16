@@ -38,7 +38,7 @@ q := solr.Query{
         "facet": "true",
     },
     Rows: 10,
-    Sort: "title ASC"
+    Sort: "title ASC",
 }
 ```
 
