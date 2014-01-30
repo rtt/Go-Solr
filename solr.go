@@ -277,7 +277,7 @@ func EncodeURLParamMap(m *URLParamMap) string {
  * Generates a Solr query string from a connection and a query string
  */
 func SolrSelectString(c *Connection, q string) string {
-	fmt.Sprintf("http://%s:%d/solr/%s/select?wt=json&%s", c.Host, c.Port,c.Core, q)
+	
 	return fmt.Sprintf("http://%s:%d/solr/%s/select?wt=json&%s", c.Host, c.Port,c.Core, q)
 }
 
