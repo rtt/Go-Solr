@@ -277,7 +277,8 @@ func EncodeURLParamMap(m *URLParamMap) string {
  * Generates a Solr query string from a connection and a query string
  */
 func SolrSelectString(c *Connection, q string) string {
-	return fmt.Sprintf("http://%s:%d/solr/select?wt=json&%s", c.Host, c.Port, q)
+	fmt.Sprintf("http://%s:%d/solr/%s/select?wt=json&%s", c.Host, c.Port,c.Core, q)
+	return fmt.Sprintf("http://%s:%d/solr/%s/select?wt=json&%s", c.Host, c.Port,c.Core, q)
 }
 
 /*
@@ -452,7 +453,7 @@ func chunk(s []interface{}, sz int) [][]interface{} {
  * Note: this doesn't actually hold a connection, its just
  *       a container for holding a hostname & port
  */
-func Init(host string, port int) (*Connection, error) {
+func Init(host string, port int,core string) (*Connection, error) {
 
 	if len(host) == 0 {
 		return nil, fmt.Errorf("Invalid hostname (must be length >= 1)")
@@ -462,7 +463,7 @@ func Init(host string, port int) (*Connection, error) {
 		return nil, fmt.Errorf("Invalid port (must be 1..65535")
 	}
 
-	return &Connection{Host: host, Port: port}, nil
+	return &Connection{Host: host, Port: port, Core: core}, nil
 }
 
 /*
