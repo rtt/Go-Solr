@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -192,9 +193,11 @@ func (r UpdateResponse) String() string {
  * Performs a GET request to the given url
  * Returns a []byte containing the response body
  */
-func HTTPGet(url string) ([]byte, error) {
+func HTTPGet(httpUrl string) ([]byte, error) {
 
-	r, err := http.Get(url)
+	r, err := http.Get(httpUrl)
+
+	fmt.Println(httpUrl)
 
 	if err != nil {
 		return nil, err
@@ -203,7 +206,7 @@ func HTTPGet(url string) ([]byte, error) {
 	defer r.Body.Close()
 
 	if err != nil {
-		return nil, fmt.Errorf("GET failed (%s)", url)
+		return nil, fmt.Errorf("GET failed (%s)", httpUrl)
 	}
 
 	// read the response and check
@@ -261,24 +264,27 @@ func HTTPPost(url string, headers [][]string, payload *[]byte) ([]byte, error) {
  * TODO: This isn't exactly safe and there's probably a library pkg to do this already...
  */
 func EncodeURLParamMap(m *URLParamMap) string {
-	r := []string{}
+
+	parameters := url.Values{}
 
 	for k, v := range *m {
 		l := len(v)
 		for x := 0; x < l; x++ {
-			r = append(r, fmt.Sprintf("%s=%s", k, v[x]))
+			parameters.Add(k, v[x])
 		}
+
 	}
 
-	return strings.Join(r, "&")
+	qEncoded := parameters.Encode()
+	return string(qEncoded)
+
 }
 
 /*
  * Generates a Solr query string from a connection and a query string
  */
 func SolrSelectString(c *Connection, q string) string {
-	
-	return fmt.Sprintf("http://%s:%d/solr/%s/select?wt=json&%s", c.Host, c.Port,c.Core, q)
+	return fmt.Sprintf("http://%s:%d/solr/%s/select?wt=json&%s", c.Host, c.Port, c.Core, q)
 }
 
 /*
@@ -453,7 +459,7 @@ func chunk(s []interface{}, sz int) [][]interface{} {
  * Note: this doesn't actually hold a connection, its just
  *       a container for holding a hostname & port
  */
-func Init(host string, port int,core string) (*Connection, error) {
+func Init(host string, port int, core string) (*Connection, error) {
 
 	if len(host) == 0 {
 		return nil, fmt.Errorf("Invalid hostname (must be length >= 1)")
