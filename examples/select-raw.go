@@ -16,7 +16,7 @@ import (
 func main() {
 
 	// init a connection
-	s, err := solr.Init("localhost", 8983)
+	s, err := solr.Init("localhost", 8983, "collection-name")
 
 	if err != nil {
 		fmt.Println(err)

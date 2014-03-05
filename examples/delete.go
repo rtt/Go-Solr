@@ -24,10 +24,8 @@ func main() {
 
 	// build an update document, in this case adding two documents
 	f := map[string]interface{}{
-		"add": []interface{}{
-			map[string]interface{}{"id": 22, "title": "abc"},
-			map[string]interface{}{"id": 23, "title": "def"},
-			map[string]interface{}{"id": 24, "title": "def"},
+		"delete": map[string]interface{}{
+			"id": 22,
 		},
 	}
 
