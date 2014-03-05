@@ -8,7 +8,7 @@ import (
 /*
  * README
  * ------
- * This example shows an update Query being performed. An update document
+ * This example shows an update (delete) Query being performed. An update (delete) document
  * is built and sent off to Solr.
  */
 
@@ -22,7 +22,7 @@ func main() {
 		return
 	}
 
-	// build an update document, in this case adding two documents
+	// build an update document, in this case removing two documents
 	f := map[string]interface{}{
 		"delete": map[string]interface{}{
 			"id": 22,
