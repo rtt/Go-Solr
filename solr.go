@@ -197,8 +197,6 @@ func HTTPGet(httpUrl string) ([]byte, error) {
 
 	r, err := http.Get(httpUrl)
 
-	fmt.Println(httpUrl)
-
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +290,7 @@ func SolrSelectString(c *Connection, q string) string {
  * if commit arg is true.
  */
 func SolrUpdateString(c *Connection, commit bool) string {
-	s := fmt.Sprintf("http://%s:%d/solr/update", c.Host, c.Port)
+	s := fmt.Sprintf("http://%s:%d/solr/%s/update", c.Host, c.Port, c.Core)
 	if commit {
 		return fmt.Sprintf("%s?commit=true", s)
 	}
