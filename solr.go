@@ -502,6 +502,7 @@ func (c *Connection) CustomSelect(q *Query, handlerName string) (*SelectResponse
  */
 func (c *Connection) SelectRaw(q string) (*SelectResponse, error) {
 	resp, err := c.CustomSelectRaw(q, "select")
+	return resp, err
 }
 
 /*
