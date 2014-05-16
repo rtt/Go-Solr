@@ -129,7 +129,7 @@ func (q *Query) String() string {
 	}
 
 	if q.DefType != "" {
-		s = append(s, fmt.Sprintf("deftype=%s", q.DefType))
+		s = append(s, fmt.Sprintf("defType=%s", q.DefType))
 	}
 
 	if q.Debug {
