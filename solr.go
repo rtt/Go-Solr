@@ -279,10 +279,10 @@ func EncodeURLParamMap(m *URLParamMap) string {
 }
 
 /*
- * Generates a Solr query string from a connection and a query string
+ * Generates a Solr query string from a connection, query string and handler name
  */
-func SolrSelectString(c *Connection, q string) string {
-	return fmt.Sprintf("http://%s:%d/solr/%s/select?wt=json&%s", c.Host, c.Port, c.Core, q)
+func SolrSelectString(c *Connection, q string, handlerName string) string {
+	return fmt.Sprintf("http://%s:%d/solr/%s/%s?wt=json&%s", c.Host, c.Port, c.Core, handlerName, q)
 }
 
 /*
@@ -474,7 +474,15 @@ func Init(host string, port int, core string) (*Connection, error) {
  * Performs a Select query given a Query
  */
 func (c *Connection) Select(q *Query) (*SelectResponse, error) {
-	body, err := HTTPGet(SolrSelectString(c, q.String()))
+	resp, err := c.CustomSelect(q, "select")
+	return resp, err
+}
+
+/*
+ * Performs a Select query given a Query and handlerName
+ */
+func (c *Connection) CustomSelect(q *Query, handlerName string) (*SelectResponse, error) {
+	body, err := HTTPGet(SolrSelectString(c, q.String(), handlerName))
 
 	if err != nil {
 		return nil, fmt.Errorf("Some sort of http failure") // TODO: investigate how net/http fails
@@ -493,7 +501,15 @@ func (c *Connection) Select(q *Query) (*SelectResponse, error) {
  * Performs a raw Select query given a raw query string
  */
 func (c *Connection) SelectRaw(q string) (*SelectResponse, error) {
-	body, err := HTTPGet(SolrSelectString(c, q))
+	resp, err := c.CustomSelectRaw(q, "select")
+	return resp, err
+}
+
+/*
+ * Performs a raw Select query given a raw query string and handlerName
+ */
+func (c *Connection) CustomSelectRaw(q string, handlerName string) (*SelectResponse, error) {
+	body, err := HTTPGet(SolrSelectString(c, q, handlerName))
 
 	if err != nil {
 		return nil, fmt.Errorf("Some sort of http failure") // TODO: investigate how net/http fails
