@@ -303,7 +303,7 @@ func BytesToJSON(b *[]byte) (*interface{}, error) {
 	err := json.Unmarshal(*b, &container)
 
 	if err != nil {
-		return nil, fmt.Errorf("Response decode error")
+		return nil, err
 	}
 
 	return &container, nil
@@ -316,7 +316,7 @@ func BytesToJSON(b *[]byte) (*interface{}, error) {
 func JSONToBytes(m map[string]interface{}) (*[]byte, error) {
 	b, err := json.Marshal(m)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to encode JSON")
+		return nil, err
 	}
 
 	return &b, nil
@@ -407,12 +407,12 @@ func BuildResponse(j *interface{}) (*SelectResponse, error) {
 func SelectResponseFromHTTPResponse(b []byte) (*SelectResponse, error) {
 	j, err := BytesToJSON(&b)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to decode")
+		return nil, err
 	}
 
 	resp, err := BuildResponse(j)
 	if err != nil {
-		return nil, fmt.Errorf("Error building response")
+		return nil, err
 	}
 
 	return resp, nil
@@ -487,7 +487,7 @@ func (c *Connection) CustomSelect(q *Query, handlerName string) (*SelectResponse
 	body, err := HTTPGet(SolrSelectString(c, q.String(), handlerName))
 
 	if err != nil {
-		return nil, fmt.Errorf("Some sort of http failure") // TODO: investigate how net/http fails
+		return nil, err
 	}
 
 	r, err := SelectResponseFromHTTPResponse(body)
@@ -514,7 +514,7 @@ func (c *Connection) CustomSelectRaw(q string, handlerName string) (*SelectRespo
 	body, err := HTTPGet(SolrSelectString(c, q, handlerName))
 
 	if err != nil {
-		return nil, fmt.Errorf("Some sort of http failure") // TODO: investigate how net/http fails
+		return nil, err
 	}
 
 	r, err := SelectResponseFromHTTPResponse(body)
