@@ -202,13 +202,13 @@ func HTTPGet(httpUrl string) ([]byte, error) {
 	defer r.Body.Close()
 
 	if err != nil {
-		return nil, fmt.Errorf("GET failed (%s)", httpUrl)
+		return nil, err
 	}
 
 	// read the response and check
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return nil, fmt.Errorf("Response read failed")
+		return nil, err
 	}
 
 	return body, nil
@@ -242,7 +242,7 @@ func HTTPPost(url string, headers [][]string, payload *[]byte) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if err != nil {
-		return nil, fmt.Errorf(fmt.Sprintf("POST request failed: %s", err))
+		return nil, err
 	}
 
 	// read response, check & return
