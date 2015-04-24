@@ -21,9 +21,7 @@ import (
  * (and probably at some point a Solr Core name)
  */
 type Connection struct {
-	Host    string
-	Port    int
-	Core    string
+	URL     string
 	Version []int
 }
 
@@ -282,7 +280,7 @@ func EncodeURLParamMap(m *URLParamMap) string {
  * Generates a Solr query string from a connection, query string and handler name
  */
 func SolrSelectString(c *Connection, q string, handlerName string) string {
-	return fmt.Sprintf("http://%s:%d/solr/%s/%s?wt=json&%s", c.Host, c.Port, c.Core, handlerName, q)
+	return fmt.Sprintf("%s/%s?wt=json&%s", c.URL, handlerName, q)
 }
 
 /*
@@ -290,7 +288,7 @@ func SolrSelectString(c *Connection, q string, handlerName string) string {
  * if commit arg is true.
  */
 func SolrUpdateString(c *Connection, commit bool) string {
-	s := fmt.Sprintf("http://%s:%d/solr/%s/update", c.Host, c.Port, c.Core)
+	s := fmt.Sprintf("%s/update", c.URL)
 	if commit {
 		return fmt.Sprintf("%s?commit=true", s)
 	}
@@ -455,7 +453,10 @@ func chunk(s []interface{}, sz int) [][]interface{} {
 /*
  * Inits a new Connection to a Solr instance
  * Note: this doesn't actually hold a connection, its just
- *       a container for holding a hostname & port
+ *       a container for the URL.
+ * This creates a URL with the pattern http://{host}:{port}/solr/{core}
+ * If you want to create a connection with another pattern just create
+ * the struct directly i.e. conn := &Connection{myCustomURL}.
  */
 func Init(host string, port int, core string) (*Connection, error) {
 
@@ -467,7 +468,8 @@ func Init(host string, port int, core string) (*Connection, error) {
 		return nil, fmt.Errorf("Invalid port (must be 1..65535")
 	}
 
-	return &Connection{Host: host, Port: port, Core: core}, nil
+	url := fmt.Sprintf("http://%s:%d/solr/%s", host, port, core)
+	return &Connection{URL: url}, nil
 }
 
 /*
