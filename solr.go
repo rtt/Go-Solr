@@ -21,9 +21,7 @@ import (
  * (and probably at some point a Solr Core name)
  */
 type Connection struct {
-	Host    string
-	Port    int
-	Core    string
+	URL     string
 	Version []int
 }
 
@@ -204,13 +202,13 @@ func HTTPGet(httpUrl string) ([]byte, error) {
 	defer r.Body.Close()
 
 	if err != nil {
-		return nil, fmt.Errorf("GET failed (%s)", httpUrl)
+		return nil, err
 	}
 
 	// read the response and check
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return nil, fmt.Errorf("Response read failed")
+		return nil, err
 	}
 
 	return body, nil
@@ -244,7 +242,7 @@ func HTTPPost(url string, headers [][]string, payload *[]byte) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if err != nil {
-		return nil, fmt.Errorf(fmt.Sprintf("POST request failed: %s", err))
+		return nil, err
 	}
 
 	// read response, check & return
@@ -282,7 +280,7 @@ func EncodeURLParamMap(m *URLParamMap) string {
  * Generates a Solr query string from a connection, query string and handler name
  */
 func SolrSelectString(c *Connection, q string, handlerName string) string {
-	return fmt.Sprintf("http://%s:%d/solr/%s/%s?wt=json&%s", c.Host, c.Port, c.Core, handlerName, q)
+	return fmt.Sprintf("%s/%s?wt=json&%s", c.URL, handlerName, q)
 }
 
 /*
@@ -290,7 +288,7 @@ func SolrSelectString(c *Connection, q string, handlerName string) string {
  * if commit arg is true.
  */
 func SolrUpdateString(c *Connection, commit bool) string {
-	s := fmt.Sprintf("http://%s:%d/solr/%s/update", c.Host, c.Port, c.Core)
+	s := fmt.Sprintf("%s/update", c.URL)
 	if commit {
 		return fmt.Sprintf("%s?commit=true", s)
 	}
@@ -305,7 +303,7 @@ func BytesToJSON(b *[]byte) (*interface{}, error) {
 	err := json.Unmarshal(*b, &container)
 
 	if err != nil {
-		return nil, fmt.Errorf("Response decode error")
+		return nil, err
 	}
 
 	return &container, nil
@@ -318,7 +316,7 @@ func BytesToJSON(b *[]byte) (*interface{}, error) {
 func JSONToBytes(m map[string]interface{}) (*[]byte, error) {
 	b, err := json.Marshal(m)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to encode JSON")
+		return nil, err
 	}
 
 	return &b, nil
@@ -409,12 +407,12 @@ func BuildResponse(j *interface{}) (*SelectResponse, error) {
 func SelectResponseFromHTTPResponse(b []byte) (*SelectResponse, error) {
 	j, err := BytesToJSON(&b)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to decode")
+		return nil, err
 	}
 
 	resp, err := BuildResponse(j)
 	if err != nil {
-		return nil, fmt.Errorf("Error building response")
+		return nil, err
 	}
 
 	return resp, nil
@@ -455,7 +453,10 @@ func chunk(s []interface{}, sz int) [][]interface{} {
 /*
  * Inits a new Connection to a Solr instance
  * Note: this doesn't actually hold a connection, its just
- *       a container for holding a hostname & port
+ *       a container for the URL.
+ * This creates a URL with the pattern http://{host}:{port}/solr/{core}
+ * If you want to create a connection with another pattern just create
+ * the struct directly i.e. conn := &Connection{myCustomURL}.
  */
 func Init(host string, port int, core string) (*Connection, error) {
 
@@ -467,7 +468,8 @@ func Init(host string, port int, core string) (*Connection, error) {
 		return nil, fmt.Errorf("Invalid port (must be 1..65535")
 	}
 
-	return &Connection{Host: host, Port: port, Core: core}, nil
+	url := fmt.Sprintf("http://%s:%d/solr/%s", host, port, core)
+	return &Connection{URL: url}, nil
 }
 
 /*
@@ -485,7 +487,7 @@ func (c *Connection) CustomSelect(q *Query, handlerName string) (*SelectResponse
 	body, err := HTTPGet(SolrSelectString(c, q.String(), handlerName))
 
 	if err != nil {
-		return nil, fmt.Errorf("Some sort of http failure") // TODO: investigate how net/http fails
+		return nil, err
 	}
 
 	r, err := SelectResponseFromHTTPResponse(body)
@@ -512,7 +514,7 @@ func (c *Connection) CustomSelectRaw(q string, handlerName string) (*SelectRespo
 	body, err := HTTPGet(SolrSelectString(c, q, handlerName))
 
 	if err != nil {
-		return nil, fmt.Errorf("Some sort of http failure") // TODO: investigate how net/http fails
+		return nil, err
 	}
 
 	r, err := SelectResponseFromHTTPResponse(body)
