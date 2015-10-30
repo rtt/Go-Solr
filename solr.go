@@ -67,9 +67,10 @@ type DocumentCollection struct {
  * Represents a Solr response
  */
 type SelectResponse struct {
-	Results *DocumentCollection
-	Status  int
-	QTime   int
+	Results        *DocumentCollection
+	NextCursorMark string
+	Status         int
+	QTime          int
 	// TODO: Debug info as well?
 }
 
@@ -95,6 +96,8 @@ type URLParamMap map[string][]string
  */
 type Query struct {
 	Params     URLParamMap
+	Fields     []string
+	CursorMark string
 	Rows       int
 	Start      int
 	Sort       string
@@ -112,6 +115,14 @@ func (q *Query) String() string {
 
 	if len(q.Params) > 0 {
 		s = append(s, EncodeURLParamMap(&q.Params))
+	}
+
+	if len(q.Fields) > 0 && q.Fields[0] != "" {
+		s = append(s, fmt.Sprintf("fl=%s", strings.Join(q.Fields, ",")))
+	}
+
+	if q.CursorMark != "" {
+		s = append(s, fmt.Sprintf("cursorMark=%s", q.CursorMark))
 	}
 
 	if q.Rows != 0 {
@@ -337,6 +348,10 @@ func BuildResponse(j *interface{}) (*SelectResponse, error) {
 
 	// begin Response creation
 	r := SelectResponse{}
+
+	if nextCursor, ok := (*j).(map[string]interface{})["nextCursorMark"]; ok {
+		r.NextCursorMark = nextCursor.(string)
+	}
 
 	// do status & qtime, if possible
 	r_header := (*j).(map[string]interface{})["responseHeader"].(map[string]interface{})
