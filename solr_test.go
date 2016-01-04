@@ -41,6 +41,10 @@ func TestSolrSelectString(t *testing.T) {
 		t.Fail()
 	}
 
+	s2 := SolrSelectString(c, "", "admin/ping")
+	if s2 != "http://localhost:8696/solr/core0/admin/ping?wt=json" {
+		t.Fail()
+	}
 }
 
 func TestSolrUpdateString(t *testing.T) {
