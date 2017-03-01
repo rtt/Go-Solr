@@ -339,8 +339,9 @@ func BuildResponse(j *interface{}) (*SelectResponse, error) {
 	r := SelectResponse{}
 
 	// do status & qtime, if possible
-	r_header := (*j).(map[string]interface{})["responseHeader"].(map[string]interface{})
-	if r_header != nil {
+	r_header_interface := (*j).(map[string]interface{})["responseHeader"]
+	if r_header_interface != nil {
+		r_header := r_header_interface.(map[string]interface{})
 		r.Status = int(r_header["status"].(float64))
 		r.QTime = int(r_header["QTime"].(float64))
 	}
