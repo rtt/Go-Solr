@@ -11,10 +11,28 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
+
+var keepAliveTimeout = 600 * time.Second
+var timeout = 2 * time.Second
+var dial = &net.Dialer{
+	KeepAlive: keepAliveTimeout,
+}
+var defaultTransport = &http.Transport{
+	Dial:                dial.Dial,
+	MaxIdleConns:        100,
+	MaxIdleConnsPerHost: 100,
+}
+
+var client = &http.Client{
+	Transport: defaultTransport,
+	Timeout:   timeout,
+}
 
 /*
  * Represents a "connection"; actually just a host and port
@@ -192,21 +210,20 @@ func (r UpdateResponse) String() string {
  * Returns a []byte containing the response body
  */
 func HTTPGet(httpUrl string) ([]byte, error) {
-
-	r, err := http.Get(httpUrl)
-
+	req, err := http.NewRequest("GET", httpUrl, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	defer r.Body.Close()
-
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
+
+	defer resp.Body.Close()
 
 	// read the response and check
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -222,8 +239,6 @@ func HTTPGet(httpUrl string) ([]byte, error) {
  * * Returns the body of the response and an error if necessary
  */
 func HTTPPost(url string, headers [][]string, payload *[]byte) ([]byte, error) {
-	// setup post client
-	client := &http.Client{}
 	req, err := http.NewRequest("POST", url, bytes.NewReader(*payload))
 
 	// add headers
@@ -339,8 +354,10 @@ func BuildResponse(j *interface{}) (*SelectResponse, error) {
 	r := SelectResponse{}
 
 	// do status & qtime, if possible
-	r_header := (*j).(map[string]interface{})["responseHeader"].(map[string]interface{})
-	if r_header != nil {
+
+	r_header_interface := (*j).(map[string]interface{})["responseHeader"]
+	if r_header_interface != nil {
+		r_header := r_header_interface.(map[string]interface{})
 		r.Status = int(r_header["status"].(float64))
 		r.QTime = int(r_header["QTime"].(float64))
 	}
@@ -484,8 +501,19 @@ func (c *Connection) Select(q *Query) (*SelectResponse, error) {
  * Performs a Select query given a Query and handlerName
  */
 func (c *Connection) CustomSelect(q *Query, handlerName string) (*SelectResponse, error) {
-	body, err := HTTPGet(SolrSelectString(c, q.String(), handlerName))
+	req, err := http.NewRequest("GET", SolrSelectString(c, q.String(), handlerName), nil)
+	if err != nil {
+		return nil, err
+	}
 
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -511,8 +539,19 @@ func (c *Connection) SelectRaw(q string) (*SelectResponse, error) {
  * Performs a raw Select query given a raw query string and handlerName
  */
 func (c *Connection) CustomSelectRaw(q string, handlerName string) (*SelectResponse, error) {
-	body, err := HTTPGet(SolrSelectString(c, q, handlerName))
+	req, err := http.NewRequest("GET", SolrSelectString(c, q, handlerName), nil)
+	if err != nil {
+		return nil, err
+	}
 
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -535,25 +574,32 @@ func (c *Connection) CustomSelectRaw(q string, handlerName string) (*SelectRespo
  * act appropriately
  */
 func (c *Connection) Update(m map[string]interface{}, commit bool) (*UpdateResponse, error) {
-
 	// encode "json" to a byte array & check
 	payload, err := JSONToBytes(m)
 	if err != nil {
 		return nil, err
 	}
 
-	// perform request
-	resp, err := HTTPPost(
-		SolrUpdateString(c, commit),
-		[][]string{{"Content-Type", "application/json"}},
-		payload)
+	req, err := http.NewRequest("POST", SolrUpdateString(c, commit), bytes.NewReader(*payload))
+	if err != nil {
+		return nil, err
+	}
 
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
 	// decode the response & check
-	decoded, err := BytesToJSON(&resp)
+	decoded, err := BytesToJSON(&body)
 	if err != nil {
 		return nil, err
 	}
