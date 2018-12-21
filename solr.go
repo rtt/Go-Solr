@@ -421,18 +421,18 @@ func BuildResponse(j *interface{}) (*SelectResponse, error) {
 /*
  * Decodes a HTTP (Solr) response and returns a Response
  */
-func SelectResponseFromHTTPResponse(b []byte) (*SelectResponse, error) {
+func SelectResponseFromHTTPResponse(b []byte) (*interface{}, error) {
 	j, err := BytesToJSON(&b)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := BuildResponse(j)
-	if err != nil {
-		return nil, err
-	}
+	// resp, err := BuildResponse(j)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	return resp, nil
+	return j, nil
 }
 
 /*
@@ -492,7 +492,7 @@ func Init(host string, port int, core string) (*Connection, error) {
 /*
  * Performs a Select query given a Query
  */
-func (c *Connection) Select(q *Query) (*SelectResponse, error) {
+func (c *Connection) Select(q *Query) (*interface{}, error) {
 	resp, err := c.CustomSelect(q, "select")
 	return resp, err
 }
@@ -500,7 +500,7 @@ func (c *Connection) Select(q *Query) (*SelectResponse, error) {
 /*
  * Performs a Select query given a Query and handlerName
  */
-func (c *Connection) CustomSelect(q *Query, handlerName string) (*SelectResponse, error) {
+func (c *Connection) CustomSelect(q *Query, handlerName string) (*interface{}, error) {
 	req, err := http.NewRequest("GET", SolrSelectString(c, q.String(), handlerName), nil)
 	if err != nil {
 		return nil, err
@@ -530,7 +530,7 @@ func (c *Connection) CustomSelect(q *Query, handlerName string) (*SelectResponse
 /*
  * Performs a raw Select query given a raw query string
  */
-func (c *Connection) SelectRaw(q string) (*SelectResponse, error) {
+func (c *Connection) SelectRaw(q string) (*interface{}, error) {
 	resp, err := c.CustomSelectRaw(q, "select")
 	return resp, err
 }
@@ -538,7 +538,7 @@ func (c *Connection) SelectRaw(q string) (*SelectResponse, error) {
 /*
  * Performs a raw Select query given a raw query string and handlerName
  */
-func (c *Connection) CustomSelectRaw(q string, handlerName string) (*SelectResponse, error) {
+func (c *Connection) CustomSelectRaw(q string, handlerName string) (*interface{}, error) {
 	req, err := http.NewRequest("GET", SolrSelectString(c, q, handlerName), nil)
 	if err != nil {
 		return nil, err
