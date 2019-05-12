@@ -1,5 +1,11 @@
 # Go-Solr
 
+# &lt;WARNING&gt;
+
+This repo is really old, and it's the first Go I ever wrote. It's probably pretty vile (I'm sure if I looked back at it now, I'd grimace a lot). Proceed with caution...
+
+# &lt;/WARNING&gt;
+
 An [Apache Solr](http://lucene.apache.org/solr/) library written in [Go](http://golang.org/), which is [my](http://rsty.org) first Go project! Functionality includes:
 
 * Select queries
