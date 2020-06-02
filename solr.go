@@ -104,6 +104,28 @@ type Query struct {
 }
 
 /*
+ * Response Health Check Solr
+ */
+type ResponseHealth struct {
+	ResponseHeader struct {
+		QTime  int
+		Params struct {
+			Df             string
+			Distrib        string
+			EchoParams     string
+			Facet_method   string
+			Facet_mincount string
+			Q              string
+			Rows           string
+			Version        string
+			Wt             string
+		}
+		Status int
+	}
+	Status string
+}
+
+/*
  * Query.String() returns the Query in solr query string format
  */
 func (q *Query) String() string {
@@ -280,7 +302,10 @@ func EncodeURLParamMap(m *URLParamMap) string {
  * Generates a Solr query string from a connection, query string and handler name
  */
 func SolrSelectString(c *Connection, q string, handlerName string) string {
-	return fmt.Sprintf("%s/%s?wt=json&%s", c.URL, handlerName, q)
+	if q != "" {
+		return fmt.Sprintf("%s/%s?wt=json&%s", c.URL, handlerName, q)
+	}
+	return fmt.Sprintf("%s/%s?wt=json", c.URL, handlerName)
 }
 
 /*
@@ -505,6 +530,28 @@ func (c *Connection) CustomSelect(q *Query, handlerName string) (*SelectResponse
 func (c *Connection) SelectRaw(q string) (*SelectResponse, error) {
 	resp, err := c.CustomSelectRaw(q, "select")
 	return resp, err
+}
+
+/*
+ * Performs health check
+ */
+func (c *Connection) HealthCheck() (bool, error) {
+	body, err := HTTPGet(SolrSelectString(c, "", "admin/ping"))
+	if err != nil {
+		return false, err
+	}
+
+	resp := ResponseHealth{}
+
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return false, err
+	}
+
+	if resp.Status == "OK" {
+		return true, nil
+	}
+	return false, nil
 }
 
 /*
